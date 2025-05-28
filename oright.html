@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>阿哲製作(Tab版)</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+
+    .tabs {
+      max-width: 700px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .tab-buttons {
+      display: flex;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .tab-buttons button {
+      flex: 1;
+      padding: 12px;
+      cursor: pointer;
+      border: none;
+      background-color: #eee;
+      font-weight: bold;
+      color: #333;
+      border-radius: 10px 10px 0 0;
+      transition: background-color 0.3s;
+    }
+
+    .tab-buttons button.active {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .tab-content {
+      padding: 20px;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    button.calc {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      flex: 1;
+      margin-right: 5px;
+    }
+
+    button.clear {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      flex: 1;
+      margin-left: 5px;
+    }
+
+    .result {
+      margin-top: 10px;
+      font-weight: bold;
+      white-space: pre-line;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .sub-info {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: -6px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <div class="tab-buttons">
+      <button class="active" data-tab="return-tab">退料計算器</button>
+      <button data-tab="label-tab">貼紙計算器</button>
+      <button data-tab="convert-tab">數量計算器</button>
+    </div>
+
+    <div id="return-tab" class="tab-content active">
+      <h2>退料計算器</h2>
+      <label for="batch1">貼紙備料數（批號1）</label>
+      <input type="number" id="batch1" />
+      <label for="batch2">貼紙備料數（批號2）</label>
+      <input type="number" id="batch2" />
+      <div class="sub-info" id="total-prep-info">備料總數：0</div>
+
+      <label for="orderQty">工單製令數</label>
+      <input type="number" id="orderQty" />
+
+      <label for="actualReturn">實際退料數</label>
+      <input type="number" id="actualReturn" />
+
+      <label for="formReturn">藍單退料數</label>
+      <input type="number" id="formReturn" />
+
+      <div class="button-row">
+        <button class="calc" onclick="calculateReturn()">計算</button>
+        <button class="clear" onclick="clearReturn()">清除</button>
+      </div>
+      <div id="return-result" class="result"></div>
+    </div>
+
+    <div id="label-tab" class="tab-content">
+      <h2>貼紙計算器</h2>
+      <label for="grossWeight">原始總重</label>
+      <input type="number" id="grossWeight" step="0.01" />
+      <label for="coreWeight">軸心重</label>
+      <input type="number" id="coreWeight" step="0.01" />
+      <label for="originalQty">原始捲數</label>
+      <input type="number" id="originalQty" />
+      <label for="returnWeight">退料重量</label>
+      <input type="number" id="returnWeight" step="0.01" />
+      <div class="button-row">
+        <button class="calc" onclick="calculateLabel()">計算</button>
+        <button class="clear" onclick="clearLabel()">清除</button>
+      </div>
+      <div id="label-result" class="result"></div>
+    </div>
+
+    <div id="convert-tab" class="tab-content">
+      <h2>數量計算器</h2>
+      <label for="total">總數量</label>
+      <input type="number" id="total" />
+      <label for="prep">備料數量</label>
+      <input type="number" id="prep" />
+      <label for="unit">每箱單位</label>
+      <input type="number" id="unit" />
+      <label for="perPallet">每板單位</label>
+      <input type="number" id="perPallet" />
+      <div class="button-row">
+        <button class="calc" onclick="calculateConvert()">計算</button>
+        <button class="clear" onclick="clearConvert()">清除</button>
+      </div>
+      <div id="convert-result" class="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab-buttons button');
+    const contents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    ['batch1', 'batch2'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        const b1 = Number(document.getElementById('batch1').value) || 0;
+        const b2 = Number(document.getElementById('batch2').value) || 0;
+        document.getElementById('total-prep-info').innerText = `備料總數：${b1 + b2}`;
+      });
+    });
+
+    function calculateLeft() {
+  const prepared = parseInt(document.getElementById('preparedTotal').value) || 0;
+  const workOrder = parseInt(document.getElementById('workOrder').value) || 0;
+  const actualReturn = parseInt(document.getElementById('actualReturn').value) || 0;
+  const blueReturn = parseInt(document.getElementById('blueReturn').value) || 0;
+
+  const shouldReturn = prepared - workOrder;
+
+  let goodReturn = 0;
+  let badReturn = 0;
+  let requirePick = 0;
+
+  if (actualReturn > shouldReturn) {
+    // 多退的視為良品，減去藍單退料後推算不良品
+    goodReturn = actualReturn - shouldReturn;
+    badReturn = blueReturn - goodReturn;
+  } else if (actualReturn < shouldReturn) {
+    // 少退需要補領
+    requirePick = shouldReturn - actualReturn;
+    badReturn = blueReturn + requirePick;
+  } else {
+    badReturn = blueReturn;
+  }
+
+  // 所有數值不可為負
+  requirePick = Math.max(requirePick, 0);
+  goodReturn = Math.max(goodReturn, 0);
+  badReturn = Math.max(Math.min(badReturn, blueReturn), 0); // 限制不良品 ≤ 藍單退料
+
+  const outputLines = [
+    `領料單: ${requirePick}`,
+    `藍單良品: ${goodReturn}`,
+    `藍單不良品: ${badReturn}`
+  ];
+
+  const leftResultDiv = document.getElementById('leftResult');
+  leftResultDiv.textContent = outputLines.join('\n');
+  leftResultDiv.style.display = 'block';
+}
+
+
+    function calculateLabel() {
+      const gross = Number(document.getElementById('grossWeight').value);
+      const core = Number(document.getElementById('coreWeight').value);
+      const qty = Number(document.getElementById('originalQty').value);
+      const retWeight = Number(document.getElementById('returnWeight').value);
+
+      if (gross > core && qty > 0 && retWeight >= core) {
+        const net = gross - core;
+        const ratio = qty / net;
+        let rawResult = (retWeight - core) * ratio;
+        const decimalPart = rawResult - Math.floor(rawResult);
+        let result = Math.floor(rawResult);
+        if (decimalPart > 0) {
+          const firstDecimalDigit = Math.floor(decimalPart * 10);
+          if (firstDecimalDigit >= 1) result += 1;
+        }
+        document.getElementById('label-result').innerText = `換算張數：${result} 張`;
+      } else {
+        document.getElementById('label-result').innerText = '輸入值不符合條件';
+      }
+    }
+
+    function clearLabel() {
+      ['grossWeight', 'coreWeight', 'originalQty', 'returnWeight'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('label-result').innerText = '';
+    }
+
+    function calculateConvert() {
+      const total = Number(document.getElementById('total').value);
+      const prep = Number(document.getElementById('prep').value);
+      const unit = Number(document.getElementById('unit').value);
+      const perPallet = Number(document.getElementById('perPallet').value);
+      const result = document.getElementById('convert-result');
+      if (!unit || unit <= 0 || !perPallet || perPallet <= 0) {
+        result.innerText = '每箱或每板單位不得為0';
+        return;
+      }
+
+      const resTotal = calculateBreakdown(total, unit, perPallet);
+      const resPrep = calculateBreakdown(prep, unit, perPallet);
+
+      result.innerText =
+        `總數量：${resTotal}\n備料數量：${resPrep}`;
+    }
+
+    function calculateBreakdown(number, unit, perPallet) {
+      const pallets = Math.floor(number / perPallet);
+      const remAfterPallet = number % perPallet;
+      const boxes = Math.floor(remAfterPallet / unit);
+      const units = remAfterPallet % unit;
+      return `${pallets} 板 ${boxes} 箱 ${units} 支`;
+    }
+
+    function clearConvert() {
+      ['total', 'prep', 'unit', 'perPallet'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('convert-result').innerText = '';
+    }
+  </script>
+</body>
+</html>
